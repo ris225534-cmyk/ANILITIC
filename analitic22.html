@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE RICE EMPIRE | CLAN ANALYTICS</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --gold: #d4af37;
+            --gold-l: #f1c40f;
+            --gold-d: #aa8c2c;
+            --bg: #0a0a0a;
+            --bg-light: #151515;
+            --card-bg: #141414;
+            --text-main: #f9f7f2;
+            --text-muted: #888;
+            --border: rgba(212, 175, 55, 0.4);
+            --glow-gold: 0 0 15px rgba(212, 175, 55, 0.6);
+            
+            --squad-recruits: #4ade80;
+            --squad-shadows: #3b82f6;
+            --squad-destroyers: #f59e0b;
+            --squad-liders: #ef4444;
+            --squad-emperors: #a855f7;
+            
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --success: #27ae60;
+            --info: #3498db;
+            
+            --transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        [data-theme="light"] {
+            --bg: #f4f1ea;
+            --bg-light: #ebe8e0;
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #555;
+            --border: rgba(212, 175, 55, 0.3);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            transition: background var(--transition), color var(--transition);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        @keyframes floatUpDown { 
+            0% { transform: translateY(0px); } 
+            50% { transform: translateY(-8px); } 
+            100% { transform: translateY(0px); } 
+        }
+        @keyframes slideInLeft { 
+            from { opacity: 0; transform: translateX(-30px); } 
+            to { opacity: 1; transform: translateX(0); } 
+        }
+        @keyframes warningPulse { 
+            0%, 100% { box-shadow: inset 0 0 10px rgba(227, 29, 35, 0); } 
+            50% { box-shadow: inset 0 0 20px rgba(227, 29, 35, 0.4); } 
+        }
+        @keyframes kickShake { 
+            0%, 100% { transform: scale(1); } 
+            25% { transform: scale(1.05); } 
+            75% { transform: scale(0.95); } 
+        }
+
+        #riceCanvas { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            pointer-events: none; 
+            z-index: 1; 
+            opacity: 0.5; 
+        }
+
+        .top-bar {
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-light) 100%);
+            border-bottom: 2px solid var(--gold);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-family: 'Orbitron';
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--gold);
+            text-shadow: var(--glow-gold);
+            letter-spacing: 2px;
+        }
+
+        .header-logo i {
+            font-size: 32px;
+            animation: floatUpDown 3s ease-in-out infinite;
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .role-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(212, 175, 55, 0.1);
+            padding: 12px 20px;
+            border-radius: 15px;
+            border: 2px solid var(--gold);
+            font-family: 'Orbitron';
+            font-weight: 900;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .role-display i {
+            font-size: 18px;
+            color: var(--gold);
+        }
+
+        .role-display .role-text {
+            color: var(--gold);
+        }
+
+        .role-display.owner .role-text { color: #ff6b6b; }
+        .role-display.analyst .role-text { color: #4ecdc4; }
+        .role-display.viewer .role-text { color: #95e1d3; }
+
+        .role-display.owner { border-color: #ff6b6b; background: rgba(255, 107, 107, 0.1); }
+        .role-display.analyst { border-color: #4ecdc4; background: rgba(78, 205, 196, 0.1); }
+        .role-display.viewer { border-color: #95e1d3; background: rgba(149, 225, 211, 0.1); }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            color: var(--gold);
+            font-size: 20px;
+            transition: 0.3s;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(45deg) scale(1.2);
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, var(--danger), #c0392b);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 11px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.4);
+        }
+
+        .main-wrapper {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        #authScreen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg) 0%, var(--bg-light) 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            transition: opacity 0.5s ease;
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            padding: 50px 35px;
+            border-radius: 30px;
+            border: 2px solid var(--gold);
+            box-shadow: var(--glow-gold), 0 30px 60px rgba(0,0,0,0.8), inset 0 0 30px rgba(212, 175, 55, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            animation: floatUpDown 4s ease-in-out infinite;
+            backdrop-filter: blur(10px);
+        }
+
+        .auth-card i {
+            font-size: 60px;
+            color: var(--gold);
+            margin-bottom: 20px;
+            animation: floatUpDown 3s ease-in-out infinite;
+        }
+
+        .auth-card h1 {
+            font-family: 'Orbitron';
+            color: var(--gold);
+            margin: 0;
+            font-size: 42px;
+            text-shadow: var(--glow-gold);
+            letter-spacing: 2px;
+        }
+
+        .auth-card p {
+            font-size: 12px;
+            letter-spacing: 8px;
+            margin-bottom: 30px;
+            color: var(--text-muted);
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .auth-description {
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .auth-description h3 {
+            margin: 0 0 15px 0;
+            font-family: 'Orbitron';
+            color: var(--gold);
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .auth-role-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            font-size: 12px;
+        }
+
+        .auth-role-name {
+            font-weight: 900;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .auth-role-code {
+            background: rgba(212, 175, 55, 0.2);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-family: 'Orbitron';
+            color: var(--gold);
+            font-weight: 900;
+            font-size: 11px;
+        }
+
+        .auth-role-code.hidden {
+            color: var(--text-muted);
+            background: rgba(100, 100, 100, 0.2);
+        }
+
+        .auth-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .auth-input-group i {
+            position: absolute;
+            left: 20px;
+            top: 18px;
+            color: var(--gold);
+            font-size: 16px;
+        }
+
+        .auth-input-group input {
+            width: 100%;
+            padding: 16px 20px 16px 50px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+            font-family: 'Noto Sans JP';
+        }
+
+        .auth-input-group input:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .auth-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-l));
+            color: #000;
+            border: none;
+            padding: 16px 25px;
+            border-radius: 15px;
+            font-family: 'Orbitron';
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.3s;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.8);
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-8px);
+            box-shadow: var(--glow-gold), 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-icon {
+            font-size: 40px;
+            color: var(--gold);
+            margin-bottom: 15px;
+            animation: floatUpDown 3s ease-in-out infinite;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--gold);
+            font-family: 'Orbitron';
+            text-shadow: var(--glow-gold);
+        }
+
+        .stat-card.warning { border-color: var(--danger); }
+        .stat-card.warning .stat-icon { color: var(--danger); animation: kickShake 1s infinite; }
+        .stat-card.warning .stat-value { color: var(--danger); text-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
+
+        .glass-panel {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            animation: slideInLeft 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .glass-panel h2 {
+            font-family: 'Orbitron';
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label {
+            font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 1px; font-weight: 900; margin-bottom: 8px;
+        }
+
+        input, select {
+            background: rgba(255,255,255,0.04); color: var(--text-main); padding: 14px 16px;
+            border: 1px solid var(--border); border-radius: 12px; font-size: 13px;
+            outline: none; transition: 0.3s; font-family: 'Noto Sans JP';
+        }
+
+        input:focus, select:focus {
+            border-color: var(--gold); background: rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .form-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        button {
+            background: linear-gradient(135deg, var(--gold), var(--gold-l));
+            color: #000; border: none; padding: 14px 24px; border-radius: 12px;
+            font-family: 'Orbitron'; font-size: 11px; font-weight: 900; cursor: pointer;
+            transition: 0.3s; letter-spacing: 1px; text-transform: uppercase;
+            display: flex; align-items: center; gap: 8px; box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        button:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 25px rgba(212, 175, 55, 0.8); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); border-color: var(--gold); }
+
+        .table-wrapper {
+            background: var(--card-bg); border: 2px solid var(--border); border-radius: 20px;
+            overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.3); margin-bottom: 30px;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+            padding: 20px 30px; border-bottom: 2px solid var(--border); display: flex;
+            justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;
+        }
+
+        .table-header h2 {
+            margin: 0; font-family: 'Orbitron'; color: var(--gold); font-size: 22px;
+            display: flex; align-items: center; gap: 10px; letter-spacing: 1px;
+        }
+
+        .search-box { position: relative; flex: 1; min-width: 250px; max-width: 400px; }
+        .search-box input { padding-left: 40px; margin-bottom: 0; width: 100%; border-radius: 30px; }
+        .search-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--gold); }
+
+        .table-container { overflow-x: auto; max-height: 800px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { position: sticky; top: 0; z-index: 10; background: rgba(212, 175, 55, 0.1); backdrop-filter: blur(5px); }
+        th { padding: 16px; text-align: left; font-weight: 900; color: var(--gold); text-transform: uppercase; font-family: 'Orbitron'; font-size: 10px; letter-spacing: 1px; border-bottom: 2px solid var(--border); }
+        td { padding: 16px; border-bottom: 1px solid rgba(212, 175, 55, 0.1); transition: 0.3s; }
+        tbody tr:hover { background: rgba(212, 175, 55, 0.08); box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.1); }
+        tbody tr.row-kick { background: rgba(231, 76, 60, 0.15); animation: warningPulse 2s infinite; border-left: 4px solid var(--danger); }
+
+        .member-name { font-weight: 900; font-family: 'Orbitron'; color: var(--gold); font-size: 14px; letter-spacing: 0.5px; }
+        .member-nick { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+
+        .squad-badge {
+            display: inline-block; padding: 6px 14px; border-radius: 12px; font-size: 10px;
+            font-weight: 900; text-transform: uppercase; letter-spacing: 1px;
+            border: 2px solid currentColor; background: rgba(255,255,255,0.05);
+        }
+        .squad-badge.recruits { color: var(--squad-recruits); }
+        .squad-badge.shadows { color: var(--squad-shadows); }
+        .squad-badge.destroyers { color: var(--squad-destroyers); }
+        .squad-badge.liders { color: var(--squad-liders); }
+        .squad-badge.emperors { color: var(--squad-emperors); }
+
+        .skip-counter { font-family: 'Orbitron'; font-weight: 900; font-size: 18px; text-align: center; }
+        .skip-counter.safe { color: var(--success); }
+        .skip-counter.warning { color: var(--warning); }
+        .skip-counter.danger { color: var(--danger); animation: kickShake 1s infinite; }
+        .skip-label { font-size: 9px; color: var(--text-muted); text-align: center; margin-top: 2px; text-transform: uppercase; }
+
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-small { padding: 8px 12px; font-size: 10px; border-radius: 8px; gap: 6px; white-space: nowrap; }
+        .btn-present { background: linear-gradient(135deg, var(--success), #229954); color: white; }
+        .btn-absent { background: linear-gradient(135deg, var(--warning), #d35400); color: white; }
+        .btn-kick { background: linear-gradient(135deg, var(--danger), #8B0000); color: white; font-weight: 900; animation: kickShake 2s infinite; }
+
+        .notification {
+            position: fixed; top: 30px; right: 20px; background: var(--card-bg);
+            border: 2px solid var(--gold); border-radius: 12px; padding: 16px 24px;
+            color: var(--text-main); font-family: 'Orbitron'; font-size: 12px; font-weight: 900;
+            z-index: 3000; animation: slideInLeft 0.4s ease; box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+            display: flex; align-items: center; gap: 12px;
+        }
+        .notification.success { border-color: var(--success); box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4); }
+        .notification.success i { color: var(--success); }
+        .notification.danger { border-color: var(--danger); box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4); }
+        .notification.danger i { color: var(--danger); }
+
+        @media (max-width: 768px) {
+            .top-bar { flex-direction: column; gap: 15px; }
+            .form-grid { grid-template-columns: 1fr; }
+            table { font-size: 11px; }
+            td, th { padding: 10px; }
+            .action-buttons { flex-direction: column; }
+            .search-box { width: 100%; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="riceCanvas"></canvas>
+
+<div id="authScreen">
+    <div class="auth-card">
+        <i class="fas fa-crown"></i>
+        <h1>RICE EMPIRE</h1>
+        <p>CLAN ANALYTICS</p>
+        
+        <div class="auth-description">
+            <h3>📋 System Roles:</h3>
+            <div class="auth-role-item">
+                <span class="auth-role-name">👑 OWNER</span>
+                <span class="auth-role-code hidden">Full Access</span>
+            </div>
+            <div class="auth-role-item">
+                <span class="auth-role-name">📊 ANALYST</span>
+                <span class="auth-role-code hidden">Manage Skips</span>
+            </div>
+            <div class="auth-role-item">
+                <span class="auth-role-name">👁️ VIEWER</span>
+                <span class="auth-role-code hidden">Read Only</span>
+            </div>
+        </div>
+        
+        <form onsubmit="handleAuth(event)">
+            <div class="auth-input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="authCode" placeholder="Enter Secret Code" required autofocus>
+            </div>
+            <button type="submit" class="auth-btn">
+                <i class="fas fa-sign-in-alt"></i> ENTER DATABASE
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="mainInterface" style="display: none;">
+    <div class="top-bar">
+        <div class="header-logo"><i class="fas fa-dragon"></i> TRC ANALYTICS</div>
+        <div class="header-info">
+            <div id="roleDisplay" class="role-display">
+                <i class="fas fa-user-shield"></i>
+                <div>Role: <span class="role-text">LOADING</span></div>
+            </div>
+        </div>
+        <div class="header-controls">
+            <div class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></div>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> DISCONNECT</button>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-label">Total Warriors</div>
+                <div class="stat-value" id="totalMembers">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="color: #3498db;"><i class="fas fa-gem"></i></div>
+                <div class="stat-label">Clan Total Bounty</div>
+                <div class="stat-value" id="totalBounty" style="color: #3498db; text-shadow: 0 0 15px rgba(52, 152, 219, 0.6);">0M</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon"><i class="fas fa-skull-crossbones"></i></div>
+                <div class="stat-label">Awaiting Exile (Kick)</div>
+                <div class="stat-value" id="awaitingKick">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
+                <div class="stat-label">Attendance Rate</div>
+                <div class="stat-value" id="attendanceRate">0%</div>
+            </div>
+            <div class="stat-card" style="border-color: var(--success);">
+                <div class="stat-icon" style="color: var(--success);"><i class="fas fa-shield-alt"></i></div>
+                <div class="stat-label">Active Today</div>
+                <div class="stat-value" id="activeToday" style="color: var(--success); text-shadow: 0 0 15px rgba(39, 174, 96, 0.6);">0</div>
+            </div>
+        </div>
+
+        <div id="addMemberPanel" class="glass-panel" style="display: none;">
+            <h2><i class="fas fa-user-plus"></i> ENLIST NEW WARRIOR</h2>
+            <form onsubmit="addMember(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Discord Name</label>
+                        <input type="text" id="inDS" placeholder="Ex: MasterNinja#123" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Roblox Nickname</label>
+                        <input type="text" id="inRB" placeholder="Ex: Rip_Shadow" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Bounty (Millions)</label>
+                        <input type="number" id="inBT" placeholder="Ex: 2.5" step="0.1" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned Squad</label>
+                        <select id="inSQ" required>
+                            <option value="recruits">Recruits (Green)</option>
+                            <option value="shadows">Shadows (Blue)</option>
+                            <option value="destroyers">Destroyers (Orange)</option>
+                            <option value="liders">Liders (Red)</option>
+                            <option value="emperors">Emperors (Purple)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="addBtn"><i class="fas fa-sword"></i> ADD TO ROSTER</button>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('inDS').value=''; document.getElementById('inRB').value=''; document.getElementById('inBT').value='';"><i class="fas fa-eraser"></i> CLEAR</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-wrapper">
+            <div class="table-header">
+                <h2><i class="fas fa-clipboard-list"></i> WARRIOR REGISTRY</h2>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name or roblox..." onkeyup="renderTable()">
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>WARRIOR INFO</th>
+                            <th>BOUNTY</th>
+                            <th>SQUAD</th>
+                            <th style="text-align: center;">SKIPS (MAX 4)</th>
+                            <th>COMMANDS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="memberList">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. CONFIG & AUTH
+    // ==========================================
+    const ACCESS_CONFIG = {
+        "6268": { role: "owner", label: "OWNER (GOD)", class: "owner" },
+        "1027": { role: "analyst", label: "ANALYST", class: "analyst" },
+        "9999": { role: "viewer", label: "VIEWER", class: "viewer" }
+    };
+
+    let currentUserRole = null;
+    let localMembersData = []; 
+
+    // ==========================================
+    // 2. FIREBASE INIT
+    // ==========================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmFfGOg7tEzT99FDo61RRK5YS2pJiOpHI",
+        authDomain: "analitic-541a7.firebaseapp.com",
+        projectId: "analitic-541a7",
+        databaseURL: "https://analitic-541a7-default-rtdb.firebaseio.com",
+        storageBucket: "analitic-541a7.appspot.com",
+        messagingSenderId: "198571166060",
+        appId: "1:198571166060:web:1c951dfb032ed460384b49"
+    };
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // ==========================================
+    // 3. AUTH LOGIC
+    // ==========================================
+    window.onload = () => {
+        initRice(); 
+        const savedCode = localStorage.getItem('trc_auth_code');
+        if (savedCode && ACCESS_CONFIG[savedCode]) {
+            loginSuccess(savedCode, false);
+        }
+    };
+
+    function handleAuth(event) {
+        event.preventDefault(); 
+        const codeInput = document.getElementById('authCode');
+        const code = codeInput.value.trim();
+
+        if (ACCESS_CONFIG[code]) {
+            localStorage.setItem('trc_auth_code', code); 
+            loginSuccess(code, true);
+        } else {
+            showNotification("Access Denied: Invalid Code!", "danger");
+            codeInput.style.borderColor = "var(--danger)";
+            setTimeout(() => codeInput.style.borderColor = "var(--border)", 2000);
+        }
+    }
+
+    function loginSuccess(code, showMsg) {
+        const authData = ACCESS_CONFIG[code];
+        currentUserRole = authData.role;
+        
+        const authScreen = document.getElementById('authScreen');
+        authScreen.style.opacity = '0';
+        setTimeout(() => {
+            authScreen.style.display = 'none';
+            document.getElementById('mainInterface').style.display = 'block';
+        }, 300);
+        
+        const roleDisplay = document.getElementById('roleDisplay');
+        roleDisplay.className = `role-display ${authData.class}`;
+        roleDisplay.querySelector('.role-text').innerText = authData.label;
+
+        document.getElementById('addMemberPanel').style.display = (authData.role === 'owner') ? 'block' : 'none';
+
+        if(showMsg) showNotification(`Welcome back, ${authData.label}`, "success");
+        
+        loadData(); 
+    }
+
+    function logout() {
+        localStorage.removeItem('trc_auth_code');
+        location.reload(); 
+    }
+
+    // ==========================================
+    // 4. DATABASE OPERATIONS (FIXED)
+    // ==========================================
+    function addMember(event) {
+        event.preventDefault();
+        const btn = document.getElementById('addBtn');
+        const ds = document.getElementById('inDS').value.trim();
+        const rb = document.getElementById('inRB').value.trim();
+        const bt = parseFloat(document.getElementById('inBT').value) || 0;
+        const sq = document.getElementById('inSQ').value;
+
+        // Блокируем кнопку на время записи
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ENLISTING...';
+
+        // Исправлено: Сначала пишем в базу, ПОТОМ показываем уведомление
+        db.ref('members').push({ 
+            ds: ds, 
+            rb: rb, 
+            bounty: bt, 
+            squad: sq, 
+            skips: 0,
+            addedAt: Date.now()
+        })
+        .then(() => {
+            showNotification(`${ds} Enlisted successfully!`, "success");
+            event.target.reset(); 
+        })
+        .catch((error) => {
+            console.error(error);
+            showNotification("Database Error! Check your Firebase rules.", "danger");
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sword"></i> ADD TO ROSTER';
+        });
+    }
+
+    function loadData() {
+        // Слушатель 'value' автоматически обновляет таблицу при любом изменении в БД
+        db.ref('members').on('value', snapshot => {
+            localMembersData = [];
+            snapshot.forEach(child => {
+                localMembersData.push({ id: child.key, ...child.val() });
+            });
+            localMembersData.sort((a, b) => (b.bounty || 0) - (a.bounty || 0));
+            renderTable();
+        }, (error) => {
+            showNotification("Read Permission Denied!", "danger");
+        });
+    }
+
+    function renderTable() {
+        const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+        const list = document.getElementById('memberList');
+        list.innerHTML = '';
+        
+        let total = 0, kicks = 0, totalSkips = 0, sumBounty = 0;
+
+        localMembersData.forEach(m => {
+            total++;
+            totalSkips += (m.skips || 0);
+            sumBounty += (parseFloat(m.bounty) || 0);
+            if(m.skips >= 4) kicks++;
+
+            if (searchQuery) {
+                if (!m.ds.toLowerCase().includes(searchQuery) && !m.rb.toLowerCase().includes(searchQuery)) {
+                    return; 
+                }
+            }
+
+            const tr = document.createElement('tr');
+            if(m.skips >= 4) tr.className = 'row-kick';
+
+            let buttons = '';
+            if (currentUserRole === 'owner' || currentUserRole === 'analyst') {
+                if (m.skips >= 4) {
+                    buttons += `<button class="btn-small btn-kick" onclick="deleteMember('${m.id}', '${m.ds}')"><i class="fas fa-skull"></i> CONFIRM EXILE</button>`;
+                    if (currentUserRole === 'owner') {
+                        buttons += `<button class="btn-small btn-secondary" onclick="updateSkips('${m.id}', 0, 'reset')"><i class="fas fa-undo"></i> FORGIVE</button>`;
+                    }
+                } else {
+                    buttons += `
+                        <button class="btn-small btn-present" onclick="updateSkips('${m.id}', ${m.skips}, -1)"><i class="fas fa-check"></i> PRESENT</button>
+                        <button class="btn-small btn-absent" onclick="updateSkips('${m.id}', ${m.skips}, 1)"><i class="fas fa-times"></i> ABSENT</button>
+                    `;
+                }
+            } else {
+                buttons = '<span style="color:var(--text-muted); font-size:10px; font-weight: bold;">READ ONLY</span>';
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <div class="member-info">
+                        <span class="member-name">${m.ds}</span>
+                        <span class="member-nick"><i class="fas fa-gamepad"></i> ${m.rb}</span>
+                    </div>
+                </td>
+                <td><b style="color:var(--gold); font-size:14px;">${m.bounty}M</b></td>
+                <td><span class="squad-badge ${m.squad}">${m.squad}</span></td>
+                <td>
+                    <div class="skip-counter ${m.skips >= 4 ? 'danger' : (m.skips >= 3 ? 'warning' : 'safe')}">
+                        ${m.skips}
+                        <div class="skip-label">/ 4 LIMIT</div>
+                    </div>
+                </td>
+                <td><div class="action-buttons">${buttons}</div></td>
+            `;
+            list.appendChild(tr);
+        });
+
+        document.getElementById('totalMembers').innerText = total;
+        document.getElementById('awaitingKick').innerText = kicks;
+        document.getElementById('activeToday').innerText = total - kicks;
+        document.getElementById('totalBounty').innerText = sumBounty.toFixed(1) + 'M';
+        
+        let attRate = 100;
+        if (total > 0) {
+            let maxPossibleSkips = total * 4;
+            attRate = Math.max(0, Math.round(100 - ((totalSkips / maxPossibleSkips) * 100)));
+        }
+        document.getElementById('attendanceRate').innerText = `${attRate}%`;
+    }
+
+    function updateSkips(id, currentSkips, action) {
+        let newSkips;
+        if (action === 'reset') {
+            newSkips = 0;
+        } else {
+            newSkips = currentSkips + action;
+            if (newSkips < 0) newSkips = 0;
+        }
+        
+        db.ref('members/' + id).update({ skips: newSkips })
+        .then(() => {
+            if (action === 'reset') showNotification("Record Reset to 0", "success");
+            else if (action === 1) showNotification("Marked Absent", "warning");
+            else showNotification("Marked Present", "success");
+        })
+        .catch(() => showNotification("Update Failed!", "danger"));
+    }
+
+    function deleteMember(id, name) {
+        if(confirm(`Are you sure you want to PERMANENTLY EXILE [${name}] from the Empire? This cannot be undone.`)) {
+            db.ref('members/' + id).remove()
+            .then(() => showNotification(`${name} has been Exiled.`, "danger"))
+            .catch(() => showNotification("Exile Failed!", "danger"));
+        }
+    }
+
+    // ==========================================
+    // 5. UTILS
+    // ==========================================
+    function showNotification(text, type) {
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        let icon = type === 'success' ? 'fa-check-circle' : (type === 'danger' ? 'fa-skull' : 'fa-exclamation-triangle');
+        
+        notif.innerHTML = `<i class="fas ${icon}"></i> <span>${text}</span>`;
+        document.body.appendChild(notif);
+        setTimeout(() => {
+            notif.style.animation = "slideInLeft 0.4s reverse ease forwards";
+            setTimeout(() => notif.remove(), 400);
+        }, 3000);
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const current = html.getAttribute('data-theme');
+        html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    }
+
+    const canvas = document.getElementById('riceCanvas');
+    const ctx = canvas.getContext('2d');
+    let grains = [];
+
+    function initRice() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        grains = [];
+        for(let i = 0; i < 60; i++) {
+            grains.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                s: Math.random() * 3 + 1.5,
+                sp: Math.random() * 0.8 + 0.3,
+                a: Math.random() * Math.PI 
+            });
+        }
+        animateRice();
+    }
+
+    function animateRice() {
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(212, 175, 55, 0.4)"; 
+        
+        grains.forEach(g => {
+            g.y += g.sp;
+            g.x += Math.sin(g.a) * 0.5; 
+            
+            if(g.y > canvas.height) {
+                g.y = -10;
+                g.x = Math.random() * canvas.width;
+            }
+            
+            ctx.save();
+            ctx.translate(g.x, g.y);
+            ctx.rotate(g.a);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, g.s, g.s*2, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+            g.a += 0.02; 
+        });
+        requestAnimationFrame(animateRice);
+    }
+    
+    window.addEventListener('resize', () => { 
+        if(canvas) {
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight; 
+        }
+    });
+
+</script>
+</body>
+</html>
